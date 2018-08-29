@@ -34,6 +34,25 @@ struct collada_elem_attribs {
 
 } g_collada_elem_attribs;
 
+struct collada_elem_attrib_states {
+  short id;         
+  short sid;
+  short name;
+  short type;
+  short source;
+  short semantic;
+  short version;
+  short url;
+  
+  short count;
+  short stride;
+  short offset;
+  short set;
+
+  short meter;
+};
+struct collada_elem_attrib_states g_collada_elem_attrib_states;
+
 static void* resize(void *ptr,size_t newsize){
   if(ptr==NULL){
     ptr=malloc(newsize);
@@ -45,7 +64,7 @@ static void* resize(void *ptr,size_t newsize){
   assert(ptr);
   return ptr;
 }
-// en son burasi calismiyordu ona bakicam
+
 static void print_elem_value (simple_element* elem){
   if(strcmp(elem->base_type,"list_of_floats")==0){
     double* ptr = *((double**)elem->value_ptr);
@@ -95,18 +114,27 @@ static void print_elem_value (simple_element* elem){
 }
 			
 static void print_attribute(simple_element* elem){
-  assert(elem);
-  printf("%s=\"",elem->name);
-  if(strcmp(elem->base_type,"float")==0){
-    printf("%f",*(double*)elem->value_ptr); 
+  assert(elem); 
+  if(strcmp(elem->base_type,"float")==0){   
+    printf(" %s=\"",elem->name);
+    printf("%f",*((double*)elem->value_ptr));
+    printf("\" ");
   } else if(strcmp(elem->base_type,"int")==0){
-    printf("%d",*(int*)elem->value_ptr); 
+    printf(" %s=\"",elem->name);
+    printf("%d",*((int*)elem->value_ptr));
+    printf("\" ");
   } else if(strcmp(elem->base_type,"uint")==0){
-    printf("%d",*(unsigned int*)elem->value_ptr); 
+    printf(" %s=\"",elem->name);
+    printf("%u",*((unsigned int*)elem->value_ptr));
+    printf("\" ");
   } else if(strcmp(elem->base_type,"string")==0){
-    printf("%s",(char*)elem->value_ptr); 
+    if(*((char**)elem->value_ptr)){
+    printf(" %s=\"",elem->name);
+    printf("%s",*((char**)elem->value_ptr));
+    printf("\" ");
+    }
   }
-  printf("\"");
+
   
 }
 
@@ -121,7 +149,7 @@ static void print_element(simple_element* elem, int depth){
   printf("<%s",elem_ptr->name);
 
   for(int i=0;i<elem_ptr->n_attrib;++i){
-    //  print_attribute(elem_ptr->attribs[i]);
+    print_attribute(elem_ptr->attribs[i]);
   }
 
   
@@ -224,19 +252,21 @@ define_init_function(instance_geometry){
   attribs[1] = (simple_element*) &this->a_name;
   attribs[2] = (simple_element*) &this->a_url;
 
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->a_sid.value = resize( this->a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->a_sid.value,g_collada_elem_attribs.sid);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-  if(g_collada_elem_attribs.url){
+  if(g_collada_elem_attrib_states.url){
     this->a_url.value = resize( this->a_url.value, strlen(g_collada_elem_attribs.url)*sizeof(char)+sizeof(char));
     strcpy(this->a_url.value,g_collada_elem_attribs.url);
   }
-
+  init_simple_element_base(&this->a_sid,"sid","string",this,&this->a_sid.value);
+  init_simple_element_base(&this->a_url,"url","string",this,&this->a_url.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"instance_geometry","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -261,19 +291,21 @@ define_init_function(instance_camera){
   attribs[1] = (simple_element*) &this->a_name;
   attribs[2] = (simple_element*) &this->a_url;
 
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->a_sid.value = resize( this->a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->a_sid.value,g_collada_elem_attribs.sid);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-  if(g_collada_elem_attribs.url){
+  if(g_collada_elem_attrib_states.url){
     this->a_url.value = resize( this->a_url.value, strlen(g_collada_elem_attribs.url)*sizeof(char)+sizeof(char));
     strcpy(this->a_url.value,g_collada_elem_attribs.url);
   }
- 
+  init_simple_element_base(&this->a_sid,"sid","string",this,&this->a_sid.value);
+  init_simple_element_base(&this->a_url,"url","string",this,&this->a_url.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"instance_camera","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -294,11 +326,11 @@ define_init_function(matrix){
   simple_element** attribs = malloc(n_attrib * sizeof (simple_element*));
   attribs[0] = (simple_element*) &this->a_sid;
 
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->a_sid.value = resize( this->a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->a_sid.value,g_collada_elem_attribs.sid);
   }
- 
+  init_simple_element_base(&this->a_sid,"sid","string",this,&this->a_sid.value);
   init_complex_element_base(this,"matrix","float4x4",parent,&this->_ext.value,NULL,NULL,0,0);
   g_current_elem = this;
 }
@@ -352,15 +384,21 @@ define_init_function(node){
   attribs[0] = (simple_element*) &this->a_sid;
   attribs[1] = (simple_element*) &this->a_name;
     
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.sid){
+    this->a_sid.value = resize( this->a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
+    strcpy(this->a_sid.value,g_collada_elem_attribs.sid);
+  }
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_sid,"sid","string",this,&this->a_sid.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"node","none",parent_ptr,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -407,15 +445,16 @@ define_init_function(input){
     attribs[0] = (simple_element*) &this->a_semantic;
     attribs[1] = (simple_element*) &this->a_source;
     
-    if(g_collada_elem_attribs.semantic){
+    if(g_collada_elem_attrib_states.semantic){
       this->a_semantic.value = resize( this->a_semantic.value, strlen(g_collada_elem_attribs.semantic)*sizeof(char)+sizeof(char));
       strcpy(this->a_semantic.value,g_collada_elem_attribs.semantic);
     }
-    if(g_collada_elem_attribs.source){
+    if(g_collada_elem_attrib_states.source){
       this->a_source.value = resize( this->a_source.value, strlen(g_collada_elem_attribs.source)*sizeof(char)+sizeof(char));
       strcpy(this->a_source.value,g_collada_elem_attribs.source);
     }
-    
+    init_simple_element_base(&this->a_semantic,"semantic","string",this,&this->a_semantic.value);
+    init_simple_element_base(&this->a_source,"source","string",this,&this->a_source.value);
     init_complex_element_base(this,"input","none",parent,NULL,NULL,attribs,0,n_attrib);
     g_current_elem = this;
     
@@ -438,21 +477,24 @@ define_init_function(input){
     attribs[2] = (simple_element*) &this->a_set;
     attribs[3] = (simple_element*) &this->a_offset;
 
-    if(g_collada_elem_attribs.offset){
+    if(g_collada_elem_attrib_states.offset){
       this->a_offset.value = g_collada_elem_attribs.offset;
     }
-    if(g_collada_elem_attribs.set){
+    if(g_collada_elem_attrib_states.set){
       this->a_set.value = g_collada_elem_attribs.set;
     }
-    if(g_collada_elem_attribs.semantic){
+    if(g_collada_elem_attrib_states.semantic){
       this->a_semantic.value = resize( this->a_semantic.value, strlen(g_collada_elem_attribs.semantic)*sizeof(char)+sizeof(char));
       strcpy(this->a_semantic.value,g_collada_elem_attribs.semantic);
     }
-    if(g_collada_elem_attribs.source){
+    if(g_collada_elem_attrib_states.source){
       this->a_source.value = resize( this->a_source.value, strlen(g_collada_elem_attribs.source)*sizeof(char)+sizeof(char));
       strcpy(this->a_source.value,g_collada_elem_attribs.source);
     }
-
+    init_simple_element_base(&this->a_semantic,"semantic","string",this,&this->a_semantic.value);
+    init_simple_element_base(&this->a_source,"source","string",this,&this->a_source.value);
+    init_simple_element_base(&this->a_set,"set","uint",this,&this->a_set.value);
+    init_simple_element_base(&this->a_offset,"offset","uint",this,&this->a_offset.value);
     init_complex_element_base(this,"input","none",parent,NULL,NULL,attribs,0,n_attrib);
     g_current_elem = this;
   }
@@ -479,23 +521,26 @@ define_init_function(param){
   attribs[2] = (simple_element*) &this->a_type;
   attribs[3] = (simple_element*) &this->a_name;
 
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->a_sid.value = resize( this->a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->a_sid.value,g_collada_elem_attribs.sid);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-  if(g_collada_elem_attribs.type){
+  if(g_collada_elem_attrib_states.type){
     this->a_type.value = resize( this->a_type.value, strlen(g_collada_elem_attribs.type)*sizeof(char)+sizeof(char));
     strcpy(this->a_type.value,g_collada_elem_attribs.type);
   }
-  if(g_collada_elem_attribs.semantic){
+  if(g_collada_elem_attrib_states.semantic){
     this->a_semantic.value = resize( this->a_semantic.value, strlen(g_collada_elem_attribs.semantic)*sizeof(char)+sizeof(char));
     strcpy(this->a_semantic.value,g_collada_elem_attribs.semantic);
   }
-  
+  init_simple_element_base(&this->a_semantic,"semantic","string",this,&this->a_semantic.value);
+  init_simple_element_base(&this->a_sid,"sid","string",this,&this->a_sid.value);
+  init_simple_element_base(&this->a_type,"type","string",this,&this->a_type.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"param","none",parent,NULL,NULL,attribs,0,n_attrib);
   
   g_current_elem = this;
@@ -517,20 +562,23 @@ define_init_function(accessor){
   attribs[2] = (simple_element*) &this->a_stride;
   attribs[3] = (simple_element*) &this->a_count;
   
-  if(g_collada_elem_attribs.count){
+  if(g_collada_elem_attrib_states.count){
     this->a_count.value = g_collada_elem_attribs.count;
   }
-  if(g_collada_elem_attribs.stride){
+  if(g_collada_elem_attrib_states.stride){
     this->a_stride.value = g_collada_elem_attribs.stride;
   }
-  if(g_collada_elem_attribs.offset){
+  if(g_collada_elem_attrib_states.offset){
     this->a_offset.value = g_collada_elem_attribs.offset;
   }
-  if(g_collada_elem_attribs.source){
+  if(g_collada_elem_attrib_states.source){
     this->a_source.value = resize( this->a_source.value, strlen(g_collada_elem_attribs.source)*sizeof(char)+sizeof(char));
     strcpy(this->a_source.value,g_collada_elem_attribs.source);
   }
-  
+  init_simple_element_base(&this->a_count,"count","uint",this,&this->a_count.value);
+  init_simple_element_base(&this->a_stride,"stride","uint",this,&this->a_stride.value);
+  init_simple_element_base(&this->a_offset,"offset","uint",this,&this->a_offset.value);
+  init_simple_element_base(&this->a_source,"source","string",this,&this->a_source.value);
   init_complex_element_base(this,"accessor","none",parent,NULL,NULL,attribs,0,n_attrib);
   
   g_current_elem = this;
@@ -551,18 +599,20 @@ define_init_function(int_array){
   attribs[2] = (simple_element*) &this->a_name;
 
   
-  if(g_collada_elem_attribs.count){
+  if(g_collada_elem_attrib_states.count){
     this->a_count.value = g_collada_elem_attribs.count;
   }
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-  
+  init_simple_element_base(&this->a_count,"count","uint",this,&this->a_count.value);
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"int_array","list_of_ints",parent,&this->_ext.value,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -581,18 +631,20 @@ define_init_function(float_array){
   attribs[1] = (simple_element*) &this->a_id;
   attribs[2] = (simple_element*) &this->a_name;
 
-  if(g_collada_elem_attribs.count){
+  if(g_collada_elem_attrib_states.count){
     this->a_count.value = g_collada_elem_attribs.count;
   }
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-  
+  init_simple_element_base(&this->a_count,"count","uint",this,&this->a_count.value);
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"float_array","list_of_floats",parent,&this->_ext.value,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -615,14 +667,15 @@ define_init_function(polylist){
   attribs[1] = (simple_element*) &this->a_count;
 
 
-  if(g_collada_elem_attribs.count){
+  if(g_collada_elem_attrib_states.count){
     this->a_count.value = g_collada_elem_attribs.count;
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-  
+  init_simple_element_base(&this->a_count,"count","uint",this,&this->a_count.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"polylist","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -641,15 +694,16 @@ define_init_function(vertices){
   attribs[0] = (simple_element*) &this->a_id;
   attribs[1] = (simple_element*) &this->a_name;
   
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-  
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"vertices","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -671,15 +725,16 @@ define_init_function(source){
   attribs[0] = (simple_element*) &this->a_id;
   attribs[1] = (simple_element*) &this->a_name;
   
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-  
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"source","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -723,10 +778,11 @@ define_init_function(aspect_ratio){
   simple_element** attribs = malloc(n_attrib * sizeof (simple_element*));
   attribs[0] = (simple_element*) &this->_ext.a_sid;
   
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->_ext.a_sid.value = resize( this->_ext.a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->_ext.a_sid.value,g_collada_elem_attribs.sid);
   }
+  init_simple_element_base(&this->_ext.a_sid,"sid","string",this,&this->_ext.a_sid.value);
   init_complex_element_base(this,"aspect_ratio","float",parent_ptr,&this->_ext._ext.value,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -754,10 +810,11 @@ define_init_function(zfar){
   simple_element** attribs = malloc(n_attrib * sizeof (simple_element*));
   attribs[0] = (simple_element*) &this->_ext.a_sid;
 
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->_ext.a_sid.value = resize( this->_ext.a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->_ext.a_sid.value,g_collada_elem_attribs.sid);
   }
+  init_simple_element_base(&this->_ext.a_sid,"sid","string",this,&this->_ext.a_sid.value);
   init_complex_element_base(this,"zfar","float",parent_ptr,&this->_ext._ext.value,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -785,10 +842,11 @@ define_init_function(znear){
   simple_element** attribs = malloc(n_attrib * sizeof (simple_element*));
   attribs[0] = (simple_element*) &this->_ext.a_sid;
   
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->_ext.a_sid.value = resize( this->_ext.a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->_ext.a_sid.value,g_collada_elem_attribs.sid);
   }
+  init_simple_element_base(&this->_ext.a_sid,"sid","string",this,&this->_ext.a_sid.value);
   init_complex_element_base(this,"znear","float",parent_ptr,&this->_ext._ext.value,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -803,10 +861,11 @@ define_init_function(ymag){
   simple_element** attribs = malloc(n_attrib * sizeof (simple_element*));
   attribs[0] = (simple_element*) &this->_ext.a_sid;
   
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->_ext.a_sid.value = resize( this->_ext.a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->_ext.a_sid.value,g_collada_elem_attribs.sid);
-  }  
+  }
+  init_simple_element_base(&this->_ext.a_sid,"sid","string",this,&this->_ext.a_sid.value);
   init_complex_element_base(this,"ymag","float",parent,&this->_ext._ext.value,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -821,10 +880,11 @@ define_init_function(xmag){
   simple_element** attribs = malloc(n_attrib * sizeof (simple_element*));
   attribs[0] = (simple_element*) &this->_ext.a_sid;
   
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->_ext.a_sid.value = resize( this->_ext.a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->_ext.a_sid.value,g_collada_elem_attribs.sid);
-  }  
+  }
+  init_simple_element_base(&this->_ext.a_sid,"sid","string",this,&this->_ext.a_sid.value);
   init_complex_element_base(this,"xmag","float",parent,&this->_ext._ext.value,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -839,10 +899,11 @@ define_init_function(yfov){
   simple_element** attribs = malloc(n_attrib * sizeof (simple_element*));
   attribs[0] = (simple_element*) &this->_ext.a_sid;
   
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->_ext.a_sid.value = resize( this->_ext.a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->_ext.a_sid.value,g_collada_elem_attribs.sid);
   }
+  init_simple_element_base(&this->_ext.a_sid,"sid","string",this,&this->_ext.a_sid.value);
   init_complex_element_base(this,"yfov","float",parent,&this->_ext._ext.value,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -857,10 +918,11 @@ define_init_function(xfov){
   simple_element** attribs = malloc(n_attrib * sizeof (simple_element*));
   attribs[0] = (simple_element*) &this->_ext.a_sid;
   
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->_ext.a_sid.value = resize( this->_ext.a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->_ext.a_sid.value,g_collada_elem_attribs.sid);
-  }  
+  }
+  init_simple_element_base(&this->_ext.a_sid,"sid","string",this,&this->_ext.a_sid.value);
   init_complex_element_base(this,"xfov","float",parent,&this->_ext._ext.value,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -926,18 +988,21 @@ define_init_function(instance_visual_scene){
   attribs[1] = (simple_element*) &this->a_sid;
   attribs[2] = (simple_element*) &this->a_url;
   
-  if(g_collada_elem_attribs.sid){
+  if(g_collada_elem_attrib_states.sid){
     this->a_sid.value = resize( this->a_sid.value, strlen(g_collada_elem_attribs.sid)*sizeof(char)+sizeof(char));
     strcpy(this->a_sid.value,g_collada_elem_attribs.sid);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-  if(g_collada_elem_attribs.url){
+  if(g_collada_elem_attrib_states.url){
     this->a_url.value = resize( this->a_url.value, strlen(g_collada_elem_attribs.url)*sizeof(char)+sizeof(char));
     strcpy(this->a_url.value,g_collada_elem_attribs.url);
   }
+  init_simple_element_base(&this->a_sid,"sid","string",this,&this->a_sid.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
+  init_simple_element_base(&this->a_url,"url","string",this,&this->a_url.value);
   init_complex_element_base(this,"instance_visual_scene","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -960,15 +1025,16 @@ define_init_function(visual_scene){
   attribs[0] = (simple_element*) &this->a_name;
   attribs[1] = (simple_element*) &this->a_id;
     
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
-  
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"visual_scene","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -990,14 +1056,16 @@ define_init_function(geometry){
   attribs[0] = (simple_element*) &this->a_name;
   attribs[1] = (simple_element*) &this->a_id;
   
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"geometry","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -1019,14 +1087,16 @@ define_init_function(camera){
   attribs[0] = (simple_element*) &this->a_name;
   attribs[1] = (simple_element*) &this->a_id;
   
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"camera","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -1050,14 +1120,16 @@ define_init_function(library_cameras){
   attribs[0] = (simple_element*) &this->a_name;
   attribs[1] = (simple_element*) &this->a_id;
   
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"library_cameras","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -1081,14 +1153,16 @@ define_init_function(library_geometries){
   attribs[0] = (simple_element*) &this->a_name;
   attribs[1] = (simple_element*) &this->a_id;
   
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"library_geometries","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -1112,14 +1186,16 @@ define_init_function(library_visual_scenes){
   attribs[0] = (simple_element*) &this->a_name;
   attribs[1] = (simple_element*) &this->a_id;
   
-  if(g_collada_elem_attribs.id){
+  if(g_collada_elem_attrib_states.id){
     this->a_id.value = resize( this->a_id.value, strlen(g_collada_elem_attribs.id)*sizeof(char)+sizeof(char));
     strcpy(this->a_id.value,g_collada_elem_attribs.id);
   }
-  if(g_collada_elem_attribs.name){
+  if(g_collada_elem_attrib_states.name){
     this->a_name.value = resize( this->a_name.value, strlen(g_collada_elem_attribs.name)*sizeof(char)+sizeof(char));
     strcpy(this->a_name.value,g_collada_elem_attribs.name);
   }
+  init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
+  init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
   init_complex_element_base(this,"library_visual_scenes","none",parent,NULL,NULL,attribs,0,n_attrib);
   g_current_elem = this;
 }
@@ -1149,10 +1225,11 @@ define_init_function(collada){
   attribs[0] = (simple_element*) &this->a_version;
 
   
-  if(g_collada_elem_attribs.version){
+  if(g_collada_elem_attrib_states.version){
     this->a_version.value = resize( this->a_version.value, strlen(g_collada_elem_attribs.version)*sizeof(char)+sizeof(char));
     strcpy(this->a_version.value,g_collada_elem_attribs.version);
   }
+  init_simple_element_base(&this->a_version,"version","string",this,&this->a_version.value);
   init_complex_element_base(this,"COLLADA","none",NULL,NULL,NULL,attribs,0,n_attrib);
   g_collada = this;
   g_current_elem = this;
@@ -1164,52 +1241,78 @@ static void parse_attribs(void* userdata, const char** attr){
   size_t i=0;
   const char *ptr=NULL;
   // g_collada_elem_attribs = 0; burda sifirlama yapilmas lazim
+  g_collada_elem_attrib_states = (struct collada_elem_attrib_states) {
+    .id = 0,     
+    .sid = 0,
+    .name = 0,
+    .type = 0,
+    .version = 0,
+    .url = 0,
+    .stride = 0,
+    .offset = 0,
+    .set = 0,
+    .meter = 0 
+  };
+  
   if(nattr){
     for(i=0;i<nattr/2;++i){
       ptr=attr[i*2];
       if(ptr[0]=='i'){//id
 	ptr=attr[i*2+1];
 	g_collada_elem_attribs.id = ptr;
+	g_collada_elem_attrib_states.id = 1;
       }else if(ptr[0]=='n'){//name
 	ptr=attr[i*2+1];
 	g_collada_elem_attribs.name = ptr;
+	g_collada_elem_attrib_states.name = 1;
       }else if(ptr[0]=='s'){
 	if(ptr[1]=='i'){//sid
 	  ptr=attr[i*2+1];
 	  g_collada_elem_attribs.sid = ptr;
+	  g_collada_elem_attrib_states.sid = 1;
 	}else if(ptr[1]=='e'){
 	  if(ptr[2]=='t'){//set
 	    ptr=attr[i*2+1];
 	    g_collada_elem_attribs.set = strtoul(ptr,NULL,10);
+	    g_collada_elem_attrib_states.set = 1;
 	  }else if(ptr[2]=='m'){//semantic
 	    ptr=attr[i*2+1];
 	    g_collada_elem_attribs.semantic = ptr;
+	    g_collada_elem_attrib_states.semantic = 1;
 	  }
 	}else if(ptr[1]=='o'){//source
 	  ptr=attr[i*2+1];
 	  g_collada_elem_attribs.source = ptr;
+	  g_collada_elem_attrib_states.source = 1;
 	}else if(ptr[1]=='t'){//stride
 	  ptr=attr[i*2+1];
 	  g_collada_elem_attribs.stride = strtoul(ptr,NULL,10);
+	  g_collada_elem_attrib_states.stride = 1;
 	}
       }else if(ptr[0]=='t'){//type
 	ptr=attr[i*2+1];
 	g_collada_elem_attribs.type = ptr;
+	g_collada_elem_attrib_states.type = 1;
       }else if(ptr[0]=='u'){//url
 	ptr=attr[i*2+1];
 	g_collada_elem_attribs.url = ptr;
+	g_collada_elem_attrib_states.url = 1;
       }else if(ptr[0]=='m'){//meter
 	ptr=attr[i*2+1];
 	g_collada_elem_attribs.meter = strtod(ptr,NULL);
+	g_collada_elem_attrib_states.meter = 1;
       }else if(ptr[0]=='v'){//version
 	ptr=attr[i*2+1];
 	g_collada_elem_attribs.version = ptr;
+	g_collada_elem_attrib_states.version = 1;
       }else if(ptr[0]=='c'){//count
 	ptr=attr[i*2+1];
 	g_collada_elem_attribs.count = strtoul(ptr,NULL,10);
+	g_collada_elem_attrib_states.count = 1;
       }else if(ptr[0]=='o'){//offset
 	ptr=attr[i*2+1];
 	g_collada_elem_attribs.offset = strtoul(ptr,NULL,10);
+	g_collada_elem_attrib_states.offset = 1;
       }
     }
   }
@@ -1683,6 +1786,7 @@ void collada(parse)(const char *filename){
       }
 
       printf("\n\n\n\n");
+      printf("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
       print_element((simple_element*)g_collada,0);
       
       /* cleaning */
