@@ -662,6 +662,7 @@ end_type()
 begin_complex_type(collada_t)
 
 define_attrib(string,version);
+define_attrib(string,xmlns);
 
 define_children(library_geometries);
 define_children(library_cameras);

@@ -24,6 +24,7 @@ struct collada_elem_attribs {
   const char* semantic;
   const char* version;
   const char* url;
+  const char* xmlns;
 
   size_t count;
   size_t stride;
@@ -43,6 +44,7 @@ struct collada_elem_attrib_states {
   short semantic;
   short version;
   short url;
+  short xmlns;
   
   short count;
   short stride;
@@ -65,32 +67,32 @@ static void* resize(void *ptr,size_t newsize){
   return ptr;
 }
 
-static void print_elem_value (simple_element* elem){
+static void print_elem_value (FILE* file,simple_element* elem){
   if(strcmp(elem->base_type,"list_of_floats")==0){
     double* ptr = *((double**)elem->value_ptr);
     for(int i=0;i<elem->value_size;i++){
       if(i==elem->value_size-1){
-	printf("%.7g",ptr[i]);
+	fprintf(file,"%.7g",ptr[i]);
       }else{
-	printf("%.7g ",ptr[i]);
+	fprintf(file,"%.7g ",ptr[i]);
       }
     }
   } else if(strcmp(elem->base_type,"list_of_ints")==0){
     int* ptr = *((int**)elem->value_ptr);
     for(int i=0;i<elem->value_size;i++){
       if(i==elem->value_size-1){
-	printf("%d",ptr[i]);
+	fprintf(file,"%d",ptr[i]);
       }else{
-	printf("%d ",ptr[i]);
+	fprintf(file,"%d ",ptr[i]);
       }
     }
   } else if(strcmp(elem->base_type,"list_of_uints")==0){
     unsigned int* ptr = *((unsigned int**)elem->value_ptr);
     for(int i=0;i<elem->value_size;i++){
       if(i==elem->value_size-1){
-	printf("%u",ptr[i]);
+	fprintf(file,"%u",ptr[i]);
       }else{
-	printf("%u ",ptr[i]);
+	fprintf(file,"%u ",ptr[i]);
       }
     }
   } else if(strcmp(elem->base_type,"float4x4")==0){
@@ -98,85 +100,94 @@ static void print_elem_value (simple_element* elem){
     for (int i=0;i<4;i++){
       for(int j=0;j<4;j++){
 	if(i==3 && j==3){
-	  printf("%.7g",(*ptr)[i][j]);
+	  fprintf(file,"%.7g",(*ptr)[i][j]);
 	}else{
-	  printf("%.7g ",(*ptr)[i][j]);
+	  fprintf(file,"%.7g ",(*ptr)[i][j]);
 	}
       }
     }
   } else if(strcmp(elem->base_type,"float")==0){
-    printf("%.7g",*(double*)elem->value_ptr);
+    fprintf(file,"%.7g",*(double*)elem->value_ptr);
   } else if(strcmp(elem->base_type,"int")==0){
-    printf("%d",*(int*)elem->value_ptr);
+    fprintf(file,"%d",*(int*)elem->value_ptr);
   } else if(strcmp(elem->base_type,"uint")==0){
-    printf("%ud",*(unsigned int*)elem->value_ptr);
+    fprintf(file,"%ud",*(unsigned int*)elem->value_ptr);
   }
 }
 			
-static void print_attribute(simple_element* elem){
+static void print_attribute(FILE* file,simple_element* elem){
   assert(elem); 
   if(strcmp(elem->base_type,"float")==0){   
-    printf(" %s=\"",elem->name);
-    printf("%f",*((double*)elem->value_ptr));
-    printf("\" ");
+    fprintf(file," %s=\"",elem->name);
+    fprintf(file,"%f",*((double*)elem->value_ptr));
+    fprintf(file,"\" ");
   } else if(strcmp(elem->base_type,"int")==0){
-    printf(" %s=\"",elem->name);
-    printf("%d",*((int*)elem->value_ptr));
-    printf("\" ");
+    fprintf(file," %s=\"",elem->name);
+    fprintf(file,"%d",*((int*)elem->value_ptr));
+    fprintf(file,"\" ");
   } else if(strcmp(elem->base_type,"uint")==0){
-    printf(" %s=\"",elem->name);
-    printf("%u",*((unsigned int*)elem->value_ptr));
-    printf("\" ");
+    fprintf(file," %s=\"",elem->name);
+    fprintf(file,"%u",*((unsigned int*)elem->value_ptr));
+    fprintf(file,"\" ");
   } else if(strcmp(elem->base_type,"string")==0){
     if(*((char**)elem->value_ptr)){
-    printf(" %s=\"",elem->name);
-    printf("%s",*((char**)elem->value_ptr));
-    printf("\" ");
+    fprintf(file," %s=\"",elem->name);
+    fprintf(file,"%s",*((char**)elem->value_ptr));
+    fprintf(file,"\" ");
     }
   }
-
-  
 }
 
-static void print_element(simple_element* elem, int depth){
+static void print_element(FILE* file,simple_element* elem, int depth){
   assert(elem);
   complex_element* elem_ptr = (complex_element*)elem;
 
-  printf("\n");
+  fprintf(file,"\n");
   for(int i=0;i<depth;++i){
-    printf("  ");
+    fprintf(file,"  ");
   }
-  printf("<%s",elem_ptr->name);
+  fprintf(file,"<%s",elem_ptr->name);
 
   for(int i=0;i<elem_ptr->n_attrib;++i){
-    print_attribute(elem_ptr->attribs[i]);
+    print_attribute(file,elem_ptr->attribs[i]);
   }
 
   
   if(elem_ptr->n_elem){
 
-    printf(">");
+    fprintf(file,">");
 
     for(int i=0;i<elem_ptr->n_elem;++i){
-      print_element(elem_ptr->elems[i],depth + 1);   
+      print_element(file,elem_ptr->elems[i],depth + 1);   
     }
 
-    printf("\n");
+    fprintf(file,"\n");
     for(int i=0;i<depth;++i){
-      printf("  ");
+      fprintf(file,"  ");
     }
-    printf("</%s>",elem_ptr->name);
+    fprintf(file,"</%s>",elem_ptr->name);
 
   }else if(elem_ptr->value_ptr){
     
-    printf(">");
-    print_elem_value((simple_element*)elem_ptr);
-    printf("</%s>",elem_ptr->name);
+    fprintf(file,">");
+    print_elem_value(file,(simple_element*)elem_ptr);
+    fprintf(file,"</%s>",elem_ptr->name);
     
   }else{
-    printf("/>");
+    fprintf(file,"/>");
   }
 
+}
+
+static void export_dae_file(const char* file_name){
+  FILE* file = fopen(file_name,"w");
+  if(!file) {
+        printf("File opening failed");
+        return;
+  }
+  fprintf(file,"<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+  print_element(file,(simple_element*)g_collada,0);
+  fclose(file);
 }
 
 static void init_simple_element_base(void* obj,char* name,char* base_type,void* parent,void* value_ptr){
@@ -1216,20 +1227,26 @@ define_init_function(collada){
   //
   this = resize( this, sizeof(element(collada)));
   this->a_version.value = NULL;
+  this->a_xmlns.value = NULL;
   this->ch_library_geometries = NULL;
   this->ch_library_cameras = NULL;
   this->ch_library_visual_scenes = NULL;
 
-  int n_attrib = 1;
+  int n_attrib = 2;
   simple_element** attribs = malloc(n_attrib * sizeof (simple_element*));
   attribs[0] = (simple_element*) &this->a_version;
-
+  attribs[1] = (simple_element*) &this->a_xmlns;
   
   if(g_collada_elem_attrib_states.version){
     this->a_version.value = resize( this->a_version.value, strlen(g_collada_elem_attribs.version)*sizeof(char)+sizeof(char));
     strcpy(this->a_version.value,g_collada_elem_attribs.version);
   }
+  if(g_collada_elem_attrib_states.xmlns){
+    this->a_xmlns.value = resize( this->a_xmlns.value, strlen(g_collada_elem_attribs.xmlns)*sizeof(char)+sizeof(char));
+    strcpy(this->a_xmlns.value,g_collada_elem_attribs.xmlns);
+  }
   init_simple_element_base(&this->a_version,"version","string",this,&this->a_version.value);
+  init_simple_element_base(&this->a_xmlns,"xmlns","string",this,&this->a_xmlns.value);
   init_complex_element_base(this,"COLLADA","none",NULL,NULL,NULL,attribs,0,n_attrib);
   g_collada = this;
   g_current_elem = this;
@@ -1248,6 +1265,7 @@ static void parse_attribs(void* userdata, const char** attr){
     .type = 0,
     .version = 0,
     .url = 0,
+    .xmlns = 0,
     .stride = 0,
     .offset = 0,
     .set = 0,
@@ -1313,6 +1331,10 @@ static void parse_attribs(void* userdata, const char** attr){
 	ptr=attr[i*2+1];
 	g_collada_elem_attribs.offset = strtoul(ptr,NULL,10);
 	g_collada_elem_attrib_states.offset = 1;
+      } else if(ptr[0]=='x'){//xmlns
+	ptr=attr[i*2+1];
+	g_collada_elem_attribs.xmlns = ptr;
+	g_collada_elem_attrib_states.xmlns = 1;
       }
     }
   }
@@ -1787,7 +1809,9 @@ void collada(parse)(const char *filename){
 
       printf("\n\n\n\n");
       printf("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-      print_element((simple_element*)g_collada,0);
+      print_element(stdout,(simple_element*)g_collada,0);
+
+      export_dae_file("exported.dae");
       
       /* cleaning */
       XML_ParserFree(p);
