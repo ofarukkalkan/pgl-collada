@@ -25,7 +25,7 @@
   element( TYPE ) * p_ ## TYPE
 
 #define define_ref(TYPE)			\
-  element( TYPE ) * r_ ## TYPE
+  ptr_complex_element  r_ ## TYPE		
 
 #define define_children(TYPE)			\
   element( TYPE ) ** ch_ ## TYPE ;		\
@@ -131,6 +131,7 @@ alias_attrib(node_type_enum);
 
 typedef struct simple_element_t simple_element;
 typedef struct complex_element_t complex_element;
+typedef struct ptr_complex_element_t ptr_complex_element;
 
 struct simple_element_t {
   char* name;
@@ -153,8 +154,18 @@ struct complex_element_t {
   
   size_t n_elem;
   size_t n_attrib;
-  simple_element** elems;
+  size_t n_ref;
+  complex_element** elems;
   simple_element** attribs;
+  ptr_complex_element** refs;
+};
+
+struct ptr_complex_element_t {
+  complex_element* ptr;
+  const char* src;
+  char* ptr_type;
+  
+  void* parent;
 };
 
 
@@ -240,6 +251,8 @@ begin_complex_type(input_local_t)
 define_attrib(string,semantic);
 define_attrib(string,source);
 
+define_ref(source);
+
 define_parent(vertices);
 
 end_type()
@@ -251,6 +264,9 @@ define_attrib(uint,set);
 define_attrib(uint,offset);
 define_attrib(string,semantic);
 define_attrib(string,source);
+
+define_ref(source);
+define_ref(vertices);
 
 define_parent(polylist);
 
@@ -312,7 +328,8 @@ define_attrib(string,source);
 
 define_children(param);
 
-define_ref(source);
+define_ref(float_array);
+define_ref(int_array);
 
 define_parent(source_technique_common);
 
