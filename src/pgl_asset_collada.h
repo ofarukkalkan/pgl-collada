@@ -140,7 +140,6 @@ struct simple_element_t {
   void* parent;
 
   void* value_ptr;
-  unsigned int value_size;
 };
 
 struct complex_element_t {
@@ -150,7 +149,7 @@ struct complex_element_t {
   void* parent;
 
   void* value_ptr;
-  unsigned int value_size;
+  size_t value_size; // bu da bazi yerlerde atanmamis
   
   size_t n_elem;
   size_t n_attrib;
@@ -174,27 +173,27 @@ double value;
 end_type()
 
 begin_simple_type(int_t)
-int value;
+long int value;
 end_type()
 
 begin_simple_type(uint_t)
-unsigned int value;
+unsigned long value;
 end_type()
 
 begin_simple_type(float3_t)
-double value[3];
+double* value;
 end_type()
 
 begin_simple_type(float4_t)
-double value[4];
+double* value;
 end_type()
 
 begin_simple_type(float3x3_t)
-double value[3][3];
+double** value;
 end_type()
 
 begin_simple_type(float4x4_t)
-double value[4][4];
+double** value;
 end_type()
 
 begin_simple_type(string_t)
@@ -206,11 +205,11 @@ double* value;
 end_type()
 
 begin_simple_type(list_of_ints_t)
-int* value;
+long int* value;
 end_type()
 
 begin_simple_type(list_of_uints_t)
-unsigned int* value;
+unsigned long* value;
 end_type()
 
 begin_simple_type(version_enum_t)

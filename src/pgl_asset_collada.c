@@ -10,12 +10,14 @@
 /* parsing */
 static element(collada) * g_collada;
 
+/* globals */
 static size_t g_current_depth;
 static int g_undefined_element_flag;
 static const char* g_current_elem_tag;
 static void* g_current_elem;
 static ptr_complex_element** g_pending_references;
 static size_t g_n_pending_reference;
+static int g_parser_status; // 0 : elemstart , 1 : chardata , 2 : elemend
 
 struct collada_elem_attribs {
   const char* id;         
@@ -59,13 +61,13 @@ struct collada_elem_attrib_states g_collada_elem_attrib_states;
 
 static void* resize(void *ptr,size_t newsize){
   if(ptr==NULL){
-    ptr=malloc(newsize);
+    ptr = malloc(newsize);
+    assert(ptr);
   }else{
     void* tmp_ptr = realloc(ptr,newsize);
     assert(tmp_ptr);
     ptr = tmp_ptr;
   }
-  assert(ptr);
   return ptr;
 }
 
@@ -80,40 +82,38 @@ static void print_elem_value (FILE* file,complex_element* elem){
       }
     }
   } else if(strcmp(elem->base_type,"list_of_ints")==0){
-    int* ptr = *((int**)elem->value_ptr);
+    long int* ptr = *((long int**)elem->value_ptr);
     for(int i=0;i<elem->value_size;i++){
       if(i==elem->value_size-1){
-	fprintf(file,"%d",ptr[i]);
+	fprintf(file,"%ld",ptr[i]);
       }else{
-	fprintf(file,"%d ",ptr[i]);
+	fprintf(file,"%ld ",ptr[i]);
       }
     }
   } else if(strcmp(elem->base_type,"list_of_uints")==0){
-    unsigned int* ptr = *((unsigned int**)elem->value_ptr);
+    unsigned long* ptr = *((unsigned long**)elem->value_ptr);
     for(int i=0;i<elem->value_size;i++){
       if(i==elem->value_size-1){
-	fprintf(file,"%u",ptr[i]);
+	fprintf(file,"%lu",ptr[i]);
       }else{
-	fprintf(file,"%u ",ptr[i]);
+	fprintf(file,"%lu ",ptr[i]);
       }
     }
   } else if(strcmp(elem->base_type,"float4x4")==0){
-    double (*ptr)[4][4]  = (double(*)[4][4]) elem->value_ptr;
-    for (int i=0;i<4;i++){
-      for(int j=0;j<4;j++){
-	if(i==3 && j==3){
-	  fprintf(file,"%.7g",(*ptr)[i][j]);
-	}else{
-	  fprintf(file,"%.7g ",(*ptr)[i][j]);
-	}
+    double* ptr = *((double**)elem->value_ptr);
+    for(int i=0;i<elem->value_size;i++){
+      if(i==elem->value_size-1){
+	fprintf(file,"%.7g",ptr[i]);
+      }else{
+	fprintf(file,"%.7g ",ptr[i]);
       }
     }
   } else if(strcmp(elem->base_type,"float")==0){
     fprintf(file,"%.7g",*(double*)elem->value_ptr);
   } else if(strcmp(elem->base_type,"int")==0){
-    fprintf(file,"%d",*(int*)elem->value_ptr);
+    fprintf(file,"%ld",*(long int*)elem->value_ptr);
   } else if(strcmp(elem->base_type,"uint")==0){
-    fprintf(file,"%ud",*(unsigned int*)elem->value_ptr);
+    fprintf(file,"%lu",*(unsigned long*)elem->value_ptr);
   }
 }
 			
@@ -122,20 +122,20 @@ static void print_attribute(FILE* file,simple_element* elem){
   if(strcmp(elem->base_type,"float")==0){   
     fprintf(file," %s=\"",elem->name);
     fprintf(file,"%f",*((double*)elem->value_ptr));
-    fprintf(file,"\" ");
+    fprintf(file,"\"");
   } else if(strcmp(elem->base_type,"int")==0){
     fprintf(file," %s=\"",elem->name);
     fprintf(file,"%d",*((int*)elem->value_ptr));
-    fprintf(file,"\" ");
+    fprintf(file,"\"");
   } else if(strcmp(elem->base_type,"uint")==0){
     fprintf(file," %s=\"",elem->name);
     fprintf(file,"%u",*((unsigned int*)elem->value_ptr));
-    fprintf(file,"\" ");
+    fprintf(file,"\"");
   } else if(strcmp(elem->base_type,"string")==0){
     if(*((char**)elem->value_ptr)){
     fprintf(file," %s=\"",elem->name);
     fprintf(file,"%s",*((char**)elem->value_ptr));
-    fprintf(file,"\" ");
+    fprintf(file,"\"");
     }
   }
 }
@@ -192,7 +192,6 @@ static void init_simple_element_base(void* obj,char* name,char* base_type,void* 
   strcpy(this->base_type,base_type);
   this->parent = parent;
   this->value_ptr = value_ptr;
-  this->value_size = 0;
 
    complex_element* parent_ptr = (complex_element*) parent;
 
@@ -307,7 +306,6 @@ static void init_ptr_complex_element_base(void* obj,char* src,char* ptr_type,voi
 
   g_pending_references = resize(g_pending_references,++g_n_pending_reference * sizeof(ptr_complex_element*));
   g_pending_references[g_n_pending_reference - 1] = this;
-
 }
 
 define_init_function(instance_geometry){
@@ -513,10 +511,11 @@ define_init_function(param){
   this->a_semantic.value = NULL;
 
   init_complex_element_base(this,"param","none",parent,NULL);
-  init_simple_element_base(&this->a_semantic,"semantic","string",this,&this->a_semantic.value);
   init_simple_element_base(&this->a_sid,"sid","string",this,&this->a_sid.value);
-  init_simple_element_base(&this->a_type,"type","string",this,&this->a_type.value);
   init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
+  init_simple_element_base(&this->a_semantic,"semantic","string",this,&this->a_semantic.value);
+  init_simple_element_base(&this->a_type,"type","string",this,&this->a_type.value);
+
 }
 
 define_init_function(accessor){
@@ -529,10 +528,10 @@ define_init_function(accessor){
   this->n_param = 0;
 
   init_complex_element_base(this,"accessor","none",parent,NULL);
+  init_simple_element_base(&this->a_source,"source","string",this,&this->a_source.value);
   init_simple_element_base(&this->a_count,"count","uint",this,&this->a_count.value);
   init_simple_element_base(&this->a_stride,"stride","uint",this,&this->a_stride.value);
   init_simple_element_base(&this->a_offset,"offset","uint",this,&this->a_offset.value);
-  init_simple_element_base(&this->a_source,"source","string",this,&this->a_source.value);
   init_ptr_complex_element_base(&this->r_float_array,this->a_source.value,"float_array",this);
   init_ptr_complex_element_base(&this->r_int_array,this->a_source.value,"int_array",this);
 }
@@ -546,9 +545,9 @@ define_init_function(int_array){
   this->_ext.value = NULL;
 
   init_complex_element_base(this,"int_array","list_of_ints",parent,&this->_ext.value); 
-  init_simple_element_base(&this->a_count,"count","uint",this,&this->a_count.value);
   init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
   init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
+  init_simple_element_base(&this->a_count,"count","uint",this,&this->a_count.value);
 }
 
 define_init_function(float_array){
@@ -560,9 +559,9 @@ define_init_function(float_array){
   this->_ext.value = NULL;
 
   init_complex_element_base(this,"float_array","list_of_floats",parent,&this->_ext.value); 
-  init_simple_element_base(&this->a_count,"count","uint",this,&this->a_count.value);
   init_simple_element_base(&this->a_id,"id","string",this,&this->a_id.value);
   init_simple_element_base(&this->a_name,"name","string",this,&this->a_name.value);
+  init_simple_element_base(&this->a_count,"count","uint",this,&this->a_count.value);
 }
 
 define_init_function(polylist){
@@ -932,17 +931,13 @@ define_init_function(collada){
   this->n_library_visual_scenes = 0;
 
   init_complex_element_base(this,"COLLADA","none",NULL,NULL);
-  init_simple_element_base(&this->a_version,"version","string",this,&this->a_version.value);
   init_simple_element_base(&this->a_xmlns,"xmlns","string",this,&this->a_xmlns.value);
+  init_simple_element_base(&this->a_version,"version","string",this,&this->a_version.value);
 
   g_collada = this;  
 }
 
-
-static void parse_attribs(void* userdata, const char** attr){
-  size_t nattr=XML_GetSpecifiedAttributeCount((XML_Parser) userdata);
-  size_t i=0;
-  const char* ptr = NULL;
+static void reset_parsed_attrib_states(){
   g_collada_elem_attrib_states = (struct collada_elem_attrib_states) {
     .id = 0,     
     .sid = 0,
@@ -956,6 +951,12 @@ static void parse_attribs(void* userdata, const char** attr){
     .set = 0,
     .meter = 0 
   };
+}
+
+static void parse_attribs(void* userdata, const char** attr){
+  size_t nattr=XML_GetSpecifiedAttributeCount((XML_Parser) userdata);
+  size_t i=0;
+  const char* ptr = NULL;
   
   if(nattr){
     for(i=0;i<nattr/2;++i){
@@ -1027,9 +1028,10 @@ static void parse_attribs(void* userdata, const char** attr){
 }
 
 static void collada(elemend)(void *userdata,const char *elem){
-  
   g_undefined_element_flag = 0;
+  g_parser_status = 2;
   g_current_depth--;
+  
   if(g_current_depth==5){
     if(strncmp(elem,"per",3)==0){
     }else if(strncmp(elem,"ort",3)==0){
@@ -1109,179 +1111,267 @@ static void collada(elemend)(void *userdata,const char *elem){
   }
 }
 
-static int* parse_list_of_ints(int* value_size,const XML_Char* str){
-    char* end;
-    const char* old_ptr = str;
-    int i = 0;
-    for (int f = strtol(str, &end,10); str != end; f = strtol(str, &end,10))
-    {
-        str = end;
-        if (errno == ERANGE){
-            printf("range error, got ");
-            errno = 0;
-        }
-	i++;
+static unsigned long* parse_list_of_uints_tail(size_t* value_size,const XML_Char* str,int len){
+  char* end = NULL;
+  const char* old_ptr = str;
+  int i = 0;
+  for (unsigned long f = strtoul(str, &end,10); end <= (old_ptr + len * sizeof(char)); f = strtoul(str, &end,10)){
+    if(end==str){ //  If no conversion can be performed
+      break;
     }
-    int* arr = NULL;
-    arr = resize(arr,i * sizeof(int));
-    str = old_ptr;
-    i = 0;
-    for (int f = strtol(str, &end,10); str != end; f = strtol(str, &end,10))
-    {
-        str = end;
-        if (errno == ERANGE){
-            printf("range error, got ");
-            errno = 0;
-        }
-	*(arr+i) = f;
-	i++;
+    str = end;
+    if (errno == ERANGE){
+      printf("range error, got ");
+      errno = 0;
+    }else{
+      i++;
     }
-    *value_size = i;
-    return arr;
+  }
+  if(i==0){
+    *value_size = 0;
+    return NULL;
+  }
+  unsigned long* arr = NULL;
+  arr = resize(arr,i * sizeof(unsigned long));
+  i=0;
+  str = old_ptr;
+  end = NULL;
+  for (unsigned long f = strtoul(str, &end,10); end <= (old_ptr + len * sizeof(char)); f = strtoul(str, &end,10)){
+    if(end==str){ //  If no conversion can be performed
+      break;
+    }
+    str = end;
+    if (errno == ERANGE){
+      printf("range error, got ");
+      errno = 0;
+    }else{
+      *(arr+i) = f;
+      i++;
+    }
+  }
+  *value_size = i;
+  return arr;
 }
 
-static unsigned int* parse_list_of_uints(int* value_size,const XML_Char* str){
-    char *end;
-    const char* old_ptr = str;
-    int i = 0;
-    for (unsigned int f = strtoul(str, &end,10); str != end; f = strtoul(str, &end,10))
-    {
-        str = end;
-        if (errno == ERANGE){
-            printf("range error, got ");
-            errno = 0;
-        }
-	i++;
+static long int* parse_list_of_ints_tail(size_t* value_size,const XML_Char* str,int len){
+  char* end = NULL;
+  const char* old_ptr = str;
+  int i = 0;
+  for (long int f = strtol(str, &end,10); end <= (old_ptr + len * sizeof(char)); f = strtol(str, &end,10)){
+    if(end==str){ //  If no conversion can be performed
+      break;
     }
-    unsigned int* arr = NULL;
-    arr = resize(arr,i * sizeof(unsigned int));
-    str = old_ptr;
-    i = 0;
-    for (unsigned int f = strtoul(str, &end,10); str != end; f = strtoul(str, &end,10))
-    {
-        str = end;
-        if (errno == ERANGE){
-            printf("range error, got ");
-            errno = 0;
-        }
-	*(arr+i) = f;
-	i++;
+    str = end;
+    if (errno == ERANGE){
+      printf("range error, got ");
+      errno = 0;
+    }else{
+      i++;
     }
-    *value_size = i;
-    return arr;
+  }
+  if(i==0){
+    *value_size = 0;
+    return NULL;
+  }
+  long int* arr = NULL;
+  arr = resize(arr,i * sizeof(long int));
+  i=0;
+  str = old_ptr;
+  end = NULL;
+  for (long int f = strtol(str, &end,10); end <= (old_ptr + len * sizeof(char)); f = strtol(str, &end,10)){
+    if(end==str){ //  If no conversion can be performed
+      break;
+    }
+    str = end;
+    if (errno == ERANGE){
+      printf("range error, got ");
+      errno = 0;
+    }else{
+      *(arr+i) = f;
+      i++;
+    }
+  }
+  *value_size = i;
+  return arr;
 }
 
-static double* parse_list_of_floats(int* value_size,const XML_Char* str){
-    char* end;
-    const char* old_ptr = str;
-    int i = 0;
-    for (double f = strtod(str, &end); str != end; f = strtod(str, &end))
-    {
-        str = end;
-        if (errno == ERANGE){
-            printf("range error, got ");
-            errno = 0;
-        }
-	i++;
+static double* parse_list_of_floats_tail(size_t* value_size,const XML_Char* str,int len){
+  char* end = NULL;
+  const char* old_ptr = str;
+  int i = 0;
+  for (double f = strtod(str, &end); end <= (old_ptr + len * sizeof(char)); f = strtod(str, &end)){
+    if(end==str){ //  If no conversion can be performed
+      break;
     }
-    double* arr = NULL;
-    arr = resize(arr,i * sizeof(double));
-    i=0;
-    str = old_ptr;
-    for (double f = strtod(str, &end); str != end; f = strtod(str, &end))
-    {
-        str = end;
-        if (errno == ERANGE){
-            printf("range error, got ");
-            errno = 0;
-        }
-	*(arr+i) = f;
-	i++;
+    str = end;
+    if (errno == ERANGE){
+      printf("range error, got ");
+      errno = 0;
+    }else{
+      i++;
     }
-    *value_size = i;
-    return arr;
+  }
+  if(i==0){
+    *value_size = 0;
+    return NULL;
+  }
+  double* arr = NULL;
+  arr = resize(arr,i * sizeof(double));
+  i=0;
+  str = old_ptr;
+  end = NULL;
+  for (double f = strtod(str, &end); end <= (old_ptr + len * sizeof(char)); f = strtod(str, &end)){
+    if(end==str){ //  If no conversion can be performed
+      break;
+    }
+    str = end;
+    if (errno == ERANGE){
+      printf("range error, got ");
+      errno = 0;
+    }else{
+      *(arr+i) = f;
+      i++;
+    }
+  }
+  *value_size = i;
+  return arr;
 }
 
-static void parse_float4x4 (double arr[4][4] ,const XML_Char* str){
-    char* end;
-    int i = 0;
-    int j = 0;
-    
-    for (double f = strtod(str, &end); str != end; f = strtod(str, &end))
-    {
-        str = end;
-        if (errno == ERANGE){
-            printf("range error, got ");
-            errno = 0;
-        }
-	arr[i][j] = f;
-	j++;
-	if(j==4) {
-	  j = 0;
-	  i++;
-	}
+static void parse_list_of_floats(complex_element* this,int merge_data_flag,const XML_Char* string,int len){
+  double** value_ptr = (double**)this->value_ptr;
+  if(merge_data_flag){
+    size_t size = 0;
+    double* buffer = parse_list_of_floats_tail(&size,string,len);
+    if(size != 0){    
+      size_t new_size = size + this->value_size;
+      (*value_ptr) = resize((*value_ptr), new_size * sizeof(double));
+      assert(buffer);
+      for(int i = this->value_size, j = 0 ; i < new_size; i++,j++ ){
+	(*value_ptr)[i] = buffer[j];
+      }
+      this->value_size = new_size;
     }
+  }else{	
+    size_t size = 0;
+    double* buffer = parse_list_of_floats_tail(&size,string,len);
+    if(size){
+      (*value_ptr) = buffer;
+      this->value_size = size;
+    }
+  }
+}
+
+static void parse_list_of_ints(complex_element* this,int merge_data_flag,const XML_Char* string,int len){
+  long int** value_ptr = (long int**)this->value_ptr;
+  if(merge_data_flag){
+    size_t size = 0;
+    long int* buffer = parse_list_of_ints_tail(&size,string,len);
+    if(size != 0){    
+      size_t new_size = size + this->value_size;
+      (*value_ptr) = resize((*value_ptr), new_size * sizeof(long int));
+      assert(buffer);
+      for(int i = this->value_size, j = 0 ; i < new_size; i++,j++ ){
+	(*value_ptr)[i] = buffer[j];
+      }
+      this->value_size = new_size;
+    }
+  }else{	
+    size_t size = 0;
+    long int* buffer = parse_list_of_ints_tail(&size,string,len);
+    if(size){
+      (*value_ptr) = buffer;
+      this->value_size = size;
+    }
+  }
+}
+
+static void parse_list_of_uints(complex_element* this,int merge_data_flag,const XML_Char* string,int len){
+  unsigned long** value_ptr = (unsigned long**)this->value_ptr;
+  if(merge_data_flag){
+    size_t size = 0;
+    unsigned long* buffer = parse_list_of_uints_tail(&size,string,len);
+    if(size != 0){    
+      size_t new_size = size + this->value_size;
+      (*value_ptr) = resize((*value_ptr), new_size * sizeof(unsigned long));
+      assert(buffer);
+      for(int i = this->value_size, j = 0 ; i < new_size; i++,j++ ){
+	(*value_ptr)[i] = buffer[j];
+      }
+      this->value_size = new_size;
+    }
+  }else{
+    size_t size = 0;
+    unsigned long* buffer = parse_list_of_uints_tail(&size,string,len);
+    if(size){
+      (*value_ptr) = buffer;
+      this->value_size = size;
+    }
+  }
+}
+
+static void parse_double(complex_element* this,int merge_data_flag,const XML_Char* string,int len){
+  double* value_ptr = (double*)this->value_ptr;
+  if(merge_data_flag){
+    if(this->value_size == 0){
+      size_t size = 0;
+      double* buffer = parse_list_of_floats_tail(&size,string,len);
+      if(size != 0){    
+	assert(buffer);
+	(*value_ptr) = buffer[0];
+	this->value_size = 1;
+      }
+    }
+  }else{
+    size_t size = 0;
+    double* buffer = parse_list_of_floats_tail(&size,string,len);
+    if(size){
+      (*value_ptr) = buffer[0];
+    }
+  }
 }
 
 static void collada(chardata)(void *userdata,const XML_Char *string,int len){
-  int data_parsed = 0;
-  
+  int data_parsed = 1;
+  int merge_data_flag = 0;
+  // bu fonksiyonda string komple geldigi icin parse edilirken kontroller eklenecek !
+  if(g_parser_status == 1){ // eger onceki asamada chardata calistiysa onceki ile burdaki string i birlestir
+    merge_data_flag = 1;
+  }
+     
   if(g_current_depth==6){
     if(strncmp(g_current_elem_tag,"float_",6)==0){
-      element(float_array)* this = g_current_elem;
-      this->_ext.value = parse_list_of_floats(&this->_base.value_size,string);
-      data_parsed = 1;
+      parse_list_of_floats((complex_element*)g_current_elem,merge_data_flag,string,len);     
     }else if(strncmp(g_current_elem_tag,"int_",4)==0){
-      element(int_array)* this = g_current_elem;
-      this->_ext.value = parse_list_of_ints(&this->_base.value_size,string);
-      data_parsed = 1;
+      parse_list_of_ints((complex_element*)g_current_elem,merge_data_flag,string,len);    
     }else if(strcmp(g_current_elem_tag,"p")==0){
-      element(p)* this = g_current_elem;
-      this->_ext.value = parse_list_of_uints(&this->_base.value_size,string);
-      data_parsed = 1;
+      parse_list_of_uints((complex_element*)g_current_elem,merge_data_flag,string,len);
     }else if(strncmp(g_current_elem_tag,"vc",2)==0){
-      element(vcount)* this = g_current_elem;
-      this->_ext.value = parse_list_of_uints(&this->_base.value_size,string);
-      data_parsed = 1;
+      parse_list_of_uints((complex_element*)g_current_elem,merge_data_flag,string,len);
     }else{
       data_parsed = 0;
     }
   }else if(g_current_depth==5){
     if(strncmp(g_current_elem_tag,"matr",4)==0){
-      element(matrix)* this = g_current_elem;
-      this->_base.value_size = 16;
-      parse_float4x4(this->_ext.value,string);
-      data_parsed = 1;
+      parse_list_of_floats((complex_element*)g_current_elem,merge_data_flag,string,len);
     }else{
       data_parsed = 0;
     }
   }else if(g_current_depth==7){
     if(strncmp(g_current_elem_tag,"xf",2)==0){
-      element(xfov)* this = g_current_elem;
-      this->_ext._ext.value = strtod (string,NULL);
-      data_parsed = 1;
+      parse_double((complex_element*)g_current_elem,merge_data_flag,string,len);
     }else if(strncmp(g_current_elem_tag,"yf",2)==0){
-      element(yfov)* this = g_current_elem;
-      this->_ext._ext.value = strtod (string,NULL);
-      data_parsed = 1;
+      parse_double((complex_element*)g_current_elem,merge_data_flag,string,len);
     }else if(strncmp(g_current_elem_tag,"asp",3)==0){
-      element(aspect_ratio)* this = g_current_elem;
-      this->_ext._ext.value = strtod (string,NULL);
-      data_parsed = 1;
+      parse_double((complex_element*)g_current_elem,merge_data_flag,string,len);
     }else if(strncmp(g_current_elem_tag,"zn",2)==0){
-      element(znear)* this = g_current_elem;
-      this->_ext._ext.value = strtod (string,NULL);
-      data_parsed = 1;
+      parse_double((complex_element*)g_current_elem,merge_data_flag,string,len);
     }else if(strcmp(g_current_elem_tag,"zfar")==0){
-      element(zfar)* this = g_current_elem;
-      this->_ext._ext.value = strtod (string,NULL);
-      data_parsed = 1;
+      parse_double((complex_element*)g_current_elem,merge_data_flag,string,len);
     }else{
       data_parsed = 0;
     }
   }else if(g_current_depth==3){
     if(strncmp(g_current_elem_tag,"up",2)==0){
-      data_parsed = 1;
     }else{
       data_parsed = 0;
     }
@@ -1296,19 +1386,27 @@ static void collada(chardata)(void *userdata,const XML_Char *string,int len){
     printf("%.*s\n",len,string);
   }
 
+  g_parser_status = 1;
+
 }
 
 static void collada(elemstart)(void *userdata,const char *elem,const char **attr){
   g_current_elem_tag = elem;
   g_undefined_element_flag = 0;
-  // burdaki string karsilastirmasi icin hash fonksiyonu bulunacak  
+  g_parser_status = 0;
+
+  reset_parsed_attrib_states();
+
+  // burdaki string karsilastirmasi icin hash fonksiyonu bulunacak
+  // bu kisimda herhangi bir element icin parse_attribs calistirilmaz ise onceki degerler kaliyor
+  // o yuzden ya parse_attribs en ustte bir kez cagirilacak yada dikkatli sekilde her biri iicn ayri ayri cagirilacak
   if(g_current_depth==5){
     if(strncmp(elem,"per",3)==0){
       collada(init_perspective)();
     }else if(strncmp(elem,"ort",3)==0){
       collada(init_orthographic)();
     }else if(strncmp(elem,"float_",6)==0){
-      parse_attribs(userdata,attr);      
+      parse_attribs(userdata,attr);
       collada(init_float_array)();
     }else if(strncmp(elem,"int_",4)==0){
       parse_attribs(userdata,attr);
@@ -1357,6 +1455,7 @@ static void collada(elemstart)(void *userdata,const char *elem,const char **attr
       parse_attribs(userdata,attr);
       collada(init_yfov)();
     }else if(strncmp(elem,"asp",3)==0){
+      parse_attribs(userdata,attr);
       collada(init_aspect_ratio)();
     }else if(strncmp(elem,"zn",2)==0){
       parse_attribs(userdata,attr);
@@ -1520,7 +1619,8 @@ void collada(parse)(const char *filename){
       g_current_depth = 0;
       g_pending_references = NULL;
       g_n_pending_reference = 0;
-
+    
+      
       printf("\n-------------PARSING DOCUMENT\n");
 
       /* create parser and parse */

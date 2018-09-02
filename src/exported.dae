@@ -1,48 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
-<COLLADA version="1.4.1"  xmlns="http://www.collada.org/2005/11/COLLADASchema" >
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
   <library_cameras>
-    <camera id="Camera-camera"  name="Camera" >
+    <camera id="Camera-camera" name="Camera">
       <optics>
         <technique_common>
           <perspective>
-            <xfov sid="xfov" >49.13434</xfov>
-            <aspect_ratio sid="xfov" >1.777778</aspect_ratio>
-            <znear sid="znear" >0.1</znear>
-            <zfar sid="zfar" >100</zfar>
+            <xfov sid="xfov">49.13434</xfov>
+            <aspect_ratio>1.777778</aspect_ratio>
+            <znear sid="znear">0.1</znear>
+            <zfar sid="zfar">100</zfar>
           </perspective>
         </technique_common>
       </optics>
     </camera>
   </library_cameras>
   <library_geometries>
-    <geometry id="Cube-mesh"  name="Cube" >
+    <geometry id="Cube-mesh" name="Cube">
       <mesh>
-        <source id="Cube-mesh-positions" >
-          <float_array count="24"  id="Cube-mesh-positions-array" >1 1 -1 1 -1 -1 -1 -0.9999998 -1 -0.9999997 1 -1 1 0.9999995 1 0.9999994 -1.000001 1 -1 -0.9999997 1 -1 1 1</float_array>
+        <source id="Cube-mesh-positions">
+          <float_array id="Cube-mesh-positions-array" count="24">1 1 -1 1 -1 -1 -1 -0.9999998 -1 -0.9999997 1 -1 1 0.9999995 1 0.9999994 -1.000001 1 -1 -0.9999997 1 -1 1 1</float_array>
           <technique_common>
-            <accessor count="8"  stride="3"  source="#Cube-mesh-positions-array" >
-              <param type="float"  name="X" />
-              <param type="float"  name="Y" />
-              <param type="float"  name="Z" />
+            <accessor source="#Cube-mesh-positions-array" count="8" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
             </accessor>
           </technique_common>
         </source>
-        <source id="Cube-mesh-normals" >
-          <float_array count="36"  id="Cube-mesh-normals-array" >0 0 -1 0 0 1 1 0 -2.38419e-07 0 -1 -4.76837e-07 -1 2.38419e-07 -1.49012e-07 2.68221e-07 1 2.38419e-07 0 0 -1 0 0 1 1 -5.96046e-07 3.27825e-07 -4.76837e-07 -1 0 -1 2.38419e-07 -1.19209e-07 2.08616e-07 1 0</float_array>
+        <source id="Cube-mesh-normals">
+          <float_array id="Cube-mesh-normals-array" count="36">0 0 -1 0 0 1 1 0 -2.38419e-07 0 -1 -4.76837e-07 -1 2.38419e-07 -1.49012e-07 2.68221e-07 1 2.38419e-07 0 0 -1 0 0 1 1 -5.96046e-07 3.27825e-07 -4.76837e-07 -1 0 -1 2.38419e-07 -1.19209e-07 2.08616e-07 1 0</float_array>
           <technique_common>
-            <accessor count="12"  stride="3"  source="#Cube-mesh-normals-array" >
-              <param type="float"  name="X" />
-              <param type="float"  name="Y" />
-              <param type="float"  name="Z" />
+            <accessor source="#Cube-mesh-normals-array" count="12" stride="3">
+              <param name="X" type="float"/>
+              <param name="Y" type="float"/>
+              <param name="Z" type="float"/>
             </accessor>
           </technique_common>
         </source>
-        <vertices id="Cube-mesh-vertices" >
-          <input semantic="POSITION"  source="#Cube-mesh-positions" />
+        <vertices id="Cube-mesh-vertices">
+          <input semantic="POSITION" source="#Cube-mesh-positions"/>
         </vertices>
-        <polylist count="12" >
-          <input semantic="VERTEX"  source="#Cube-mesh-vertices"  offset="0" />
-          <input semantic="NORMAL"  source="#Cube-mesh-normals"  offset="1" />
+        <polylist count="12">
+          <input semantic="VERTEX" source="#Cube-mesh-vertices" offset="0"/>
+          <input semantic="NORMAL" source="#Cube-mesh-normals" offset="1"/>
           <vcount>3 3 3 3 3 3 3 3 3 3 3 3</vcount>
           <p>0 0 2 0 3 0 7 1 5 1 4 1 4 2 1 2 0 2 5 3 2 3 1 3 2 4 7 4 3 4 0 5 7 5 4 5 0 6 1 6 2 6 7 7 6 7 5 7 4 8 5 8 1 8 5 9 6 9 2 9 2 10 6 10 7 10 0 11 3 11 7 11</p>
         </polylist>
@@ -50,18 +50,18 @@
     </geometry>
   </library_geometries>
   <library_visual_scenes>
-    <visual_scene id="Scene"  name="Scene" >
-      <node id="Camera"  name="Camera" >
-        <matrix sid="transform" >0.6859207 -0.3240135 0.6515582 7.481132 0.7276763 0.3054208 -0.6141704 -6.50764 0 0.8953956 0.4452714 5.343665 0 0 0 1</matrix>
-        <instance_camera url="#Camera-camera" />
+    <visual_scene id="Scene" name="Scene">
+      <node id="Camera" name="Camera">
+        <matrix sid="transform">0.6859207 -0.3240135 0.6515582 7.481132 0.7276763 0.3054208 -0.6141704 -6.50764 0 0.8953956 0.4452714 5.343665 0 0 0 1</matrix>
+        <instance_camera url="#Camera-camera"/>
       </node>
-      <node id="Cube"  name="Cube" >
-        <matrix sid="transform" >1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
-        <instance_geometry url="#Cube-mesh"  name="Cube" />
+      <node id="Cube" name="Cube">
+        <matrix sid="transform">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+        <instance_geometry url="#Cube-mesh" name="Cube"/>
       </node>
     </visual_scene>
   </library_visual_scenes>
   <scene>
-    <instance_visual_scene url="#Scene" />
+    <instance_visual_scene url="#Scene"/>
   </scene>
 </COLLADA>
